@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Daily Bible Memorizer</title>
+    <style>
+        /* ===== CSS VARIABLES (Light & Dark) ===== */
+        :root {
+            --bg-body: #f8f6f2;
+            --bg-card: #ffffff;
+            --bg-tabbar: #e8e4dc;
+            --text-primary: #2c2a26;
+            --text-secondary: #4a4843;
+            --text-muted: #6b6963;
+            --border-light: #e2ddd5;
+            --border-card: #f1efe9;
+            --shadow: 0 2px 10px rgba(0,0,0,0.04);
+            --gold: #b8860b;
+            --gold-light: #fdeec8;
+            --gold-gradient: linear-gradient(145deg, #fdf6e3, #f8edd0);
+            --blue-highlight: #e3f2fd;
+            --blue-border: #1976d2;
+            --danger: #c62828;
+            --danger-bg: #fde8e8;
+            --modal-overlay: rgba(0,0,0,0.5);
+            --success-bg: #e6f4e6;
+        }
+
+        body.dark-mode {
+            --bg-body: #1a1a1e;
+            --bg-card: #2c2c32;
+            --bg-tabbar: #3a3a42;
+            --text-primary: #e8e6e0;
+            --text-secondary: #c8c6c0;
+            --text-muted: #9a9892;
+            --border-light: #4a4a52;
+            --border-card: #3a3a42;
+            --shadow: 0 2px 10px rgba(0,0,0,0.3);
+            --gold: #d4a017;
+            --gold-light: #4a3e1a;
+            --gold-gradient: linear-gradient(145deg, #2c2818, #3a3420);
+            --blue-highlight: #1a2a3a;
+            --blue-border: #4a8ab5;
+            --danger: #ef5350;
+            --danger-bg: #3a1a1a;
+            --modal-overlay: rgba(0,0,0,0.7);
+            --success-bg: #1a3a1a;
+        }
+
+        /* ===== RESET & BASE ===== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            padding: 16px 12px 80px 12px;
+            max-width: 700px;
+            margin: 0 auto;
+            transition: background 0.3s, color 0.3s;
+        }
+        /* ===== HEADER ===== */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        h1 {
+            font-size: 1.6rem;
+            color: var(--gold);
+            border-left: 6px solid var(--gold);
+            padding-left: 12px;
+            font-weight: 600;
+        }
+        #darkModeToggle {
+            background: var(--bg-card);
+            border: 2px solid var(--border-light);
+            border-radius: 30px;
+            padding: 8px 16px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            color: var(--text-primary);
+        }
+        #darkModeToggle:hover { border-color: var(--gold); }
+
+        /* ===== TABS ===== */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-tabbar);
+            padding: 6px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg-body);
+            padding-top: 4px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px 4px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.2s;
+            min-width: 50px;
+        }
+        .tab-btn.active {
+            background: var(--bg-card);
+            color: var(--gold);
+            box-shadow: var(--shadow);
+        }
+        .tab-content { display: none; animation: fade 0.2s; }
+        .tab-content.active { display: block; }
+        @keyframes fade { from { opacity:0.3; } to { opacity:1; } }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--bg-card);
+            padding: 18px 16px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+            transition: background 0.3s, box-shadow 0.3s;
+            border: 1px solid var(--border-card);
+        }
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+        select, input {
+            width: 100%;
+            padding: 14px 12px;
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            transition: 0.2s;
+        }
+        select:focus, input:focus { border-color: var(--gold); outline: none; }
+        select option { background: var(--bg-card); color: var(--text-primary); }
+
+        /* ===== VERSE LISTS ===== */
+        .verse-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border-card);
+            padding-top: 12px;
+        }
+        .verse-item {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border-card);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.1s;
+        }
+        .verse-item:hover { background: var(--gold-light); opacity: 0.6; }
+        .verse-ref {
+            font-weight: 600;
+            color: var(--gold);
+            min-width: 80px;
+            font-size: 0.9rem;
+        }
+        .verse-text-preview {
+            flex: 1;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .verse-tag {
+            background: var(--border-card);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .verse-tag:hover { background: var(--gold-light); }
+        .badge-memorized {
+            background: var(--gold);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: var(--gold);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 12px rgba(184, 134, 11, 0.25);
+        }
+        .btn-primary:active { transform: scale(0.97); background: #9e7208; }
+        .btn-secondary {
+            background: var(--border-card);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .btn-secondary:hover { background: var(--gold-light); }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .btn-outline:hover { background: var(--gold); color: white; }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .btn-danger:hover { opacity: 0.8; }
+        .btn-small { padding: 6px 12px; font-size: 0.75rem; }
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-row button { flex: 1; }
+        .btn-success {
+            background: #2e7d32;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .btn-success:hover { opacity: 0.8; }
+
+        /* ===== DAILY VERSE CARD ===== */
+        .daily-verse-card {
+            background: var(--gold-gradient);
+            border: 2px solid var(--gold);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 12px rgba(184, 134, 11, 0.15);
+            transition: background 0.3s;
+        }
+        .daily-verse-card .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gold);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .daily-verse-card .ref { font-weight: 700; color: var(--gold); font-size: 1.1rem; }
+        .daily-verse-card .text { font-family: 'Georgia', serif; font-size: 1.1rem; line-height: 1.6; color: var(--text-primary); margin: 8px 0 12px 0; }
+        .daily-verse-card .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .daily-verse-card .actions button { flex: 1; }
+
+        /* ===== MODALS ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--modal-overlay);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            padding: 20px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: var(--bg-card);
+            max-width: 500px;
+            width: 100%;
+            border-radius: 28px;
+            padding: 28px 24px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            animation: fade 0.25s;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-ref { color: var(--gold); font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; text-align: center; }
+        .modal-text { font-size: 1.2rem; line-height: 1.7; padding: 16px 0; text-align: center; color: var(--text-primary); font-family: 'Georgia', serif; }
+        .modal-actions { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+        .modal-actions .btn-primary { flex: 2; }
+        .modal-actions .btn-secondary { flex: 1; }
+        .modal-actions .btn-outline { flex: 1; text-align: center; }
+        .modal-actions .btn-danger { flex: 1; }
+
+        /* ===== CHAPTER MODAL HIGHLIGHTS ===== */
+        .chapter-verse-item {
+            padding: 10px 6px;
+            border-bottom: 1px solid var(--border-card);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            border-radius: 6px;
+            margin: 2px 0;
+            transition: 0.1s;
+        }
+        .chapter-verse-item .vref { font-weight: 700; color: var(--gold); margin-right: 8px; }
+        .chapter-verse-item.highlight-gold {
+            background: var(--gold-light);
+            border-left: 4px solid var(--gold);
+            padding: 10px 12px;
+            border-radius: 8px;
+        }
+        .chapter-verse-item.highlight-blue {
+            background: var(--blue-highlight);
+            border-left: 3px solid var(--blue-border);
+            padding: 10px 12px;
+            border-radius: 8px;
+        }
+
+        /* ===== STATS ===== */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px; }
+        .stat-card { background: var(--bg-card); padding: 16px 10px; border-radius: 16px; text-align: center; border: 1px solid var(--border-card); }
+        .stat-number { font-size: 2rem; font-weight: 800; color: var(--gold); }
+        .stat-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; }
+        .history-list { max-height: 150px; overflow-y: auto; font-size: 0.9rem; color: var(--text-muted); }
+        .history-list .day { display: inline-block; background: var(--border-card); padding: 4px 12px; border-radius: 30px; margin: 3px 4px 3px 0; }
+        .history-list .day.missed { opacity: 0.4; }
+
+        /* ===== QUIZ ===== */
+        .quiz-card { text-align: center; padding: 30px 16px; }
+        .quiz-ref { font-size: 2.2rem; font-weight: 800; color: var(--gold); margin-bottom: 12px; }
+        .quiz-text-hidden { font-size: 1.2rem; color: var(--text-muted); font-style: italic; padding: 20px; background: var(--border-card); border-radius: 16px; margin: 16px 0; }
+        .quiz-text-revealed { font-size: 1.2rem; line-height: 1.7; font-family: 'Georgia', serif; color: var(--text-primary); padding: 20px; background: var(--gold-light); border-radius: 16px; margin: 16px 0; border: 2px solid var(--gold); }
+
+        /* ===== FILE INPUT ===== */
+        #fileInput {
+            border: 2px dashed var(--border-light);
+            padding: 30px;
+            border-radius: 20px;
+            background: var(--bg-body);
+            width: 100%;
+            cursor: pointer;
+        }
+        .hidden { display: none; }
+        .keyword-highlight { background: var(--gold-light); padding: 0 2px; border-radius: 3px; font-weight: 600; }
+        .search-row { display: flex; gap: 10px; }
+        .search-row input { flex: 1; margin-bottom: 0; }
+        .search-row button { flex: 0 0 auto; padding: 14px 20px; border: none; background: var(--gold); color: white; border-radius: 12px; font-weight: 700; cursor: pointer; }
+
+        /* ===== REMINDER SECTION ===== */
+        .reminder-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .reminder-row input[type="time"] {
+            flex: 2;
+            margin-bottom: 0;
+            padding: 12px;
+            min-width: 140px;
+        }
+        .reminder-row button {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 16px;
+        }
+        .reminder-status {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 500;
+            text-align: center;
+        }
+        .reminder-status.active {
+            background: var(--success-bg);
+            border-left: 4px solid #2e7d32;
+            color: var(--text-primary);
+        }
+        .reminder-status.inactive {
+            background: var(--danger-bg);
+            border-left: 4px solid var(--danger);
+            color: var(--text-primary);
+        }
+        .reminder-status.pending {
+            background: var(--gold-light);
+            border-left: 4px solid var(--gold);
+            color: var(--text-primary);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 500px) {
+            .stat-grid { grid-template-columns: 1fr 1fr; }
+            .tab-btn { font-size: 0.65rem; padding: 8px 2px; }
+            .modal-actions .btn-primary { flex: 1 1 100%; }
+            .modal-actions .btn-secondary { flex: 1; }
+            .modal-actions .btn-outline { flex: 1; }
+            .modal-actions .btn-danger { flex: 1; }
+            .reminder-row { flex-direction: column; }
+            .reminder-row input[type="time"] { width: 100%; }
+            .reminder-row button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header-row">
+    <h1>📖 Memorizer</h1>
+    <button id="darkModeToggle" title="Toggle Dark Mode">🌙</button>
+</div>
+
+<!-- ===== TABS ===== -->
+<div class="tab-bar">
+    <button class="tab-btn active" data-tab="tab1">📂 Upload</button>
+    <button class="tab-btn" data-tab="tab2">🔍 Memorize</button>
+    <button class="tab-btn" data-tab="tab4">🧠 Quiz</button>
+    <button class="tab-btn" data-tab="tab3">📊 Stats</button>
+</div>
+
+<!-- ===== TAB 1: UPLOAD ===== -->
+<div id="tab1" class="tab-content active">
+    <div class="card">
+        <p style="margin-bottom:12px; font-weight:500;">1️⃣ Upload your NKJV XML file</p>
+        <input type="file" id="fileInput" accept=".xml">
+        <div id="uploadStatus" style="margin-top:12px; font-size:0.9rem; color:var(--text-muted);"></div>
+        <div id="uploadHelp" class="hidden" style="margin-top:16px; padding:12px; background:var(--border-card); border-radius:12px;">
+            ✅ File loaded! Go to the <strong>"Memorize"</strong> tab.
+        </div>
+    </div>
+</div>
+
+<!-- ===== TAB 2: SEARCH & MEMORIZE ===== -->
+<div id="tab2" class="tab-content">
+    <div id="dailyVerseContainer"></div>
+    <div class="card">
+        <label>2️⃣ Filter by Testament</label>
+        <select id="testamentSelectMem">
+            <option value="All">All (Old & New)</option>
+            <option value="Old">Old Testament</option>
+            <option value="New" selected>New Testament</option>
+        </select>
+        <label>3️⃣ Select a Book</label>
+        <select id="bookSelectMem"><option value="">-- Load XML first --</option></select>
+        <label>4️⃣ Type a Keyword / Topic</label>
+        <div class="search-row">
+            <input type="text" id="searchKeyword" placeholder="e.g. Faith, Grace, Love..." />
+            <button id="searchBtn">🔍 Search</button>
+        </div>
+    </div>
+    <div class="card">
+        <div id="memVerseList" class="verse-list">
+            <p style="color:var(--text-muted); padding:10px;">Select a book, type a keyword, and click Search.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TAB 4: QUIZ ===== -->
+<div id="tab4" class="tab-content">
+    <div class="card quiz-card" id="quizContainer">
+        <h3 style="color:var(--gold); margin-bottom:12px;">🧠 Quiz Mode</h3>
+        <p style="color:var(--text-muted); margin-bottom:16px;">Test your recall! A random verse from your memorized list will appear.</p>
+        <div id="quizArea">
+            <div style="color:var(--text-muted); padding:20px;">Memorize at least 1 verse first to start the quiz.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TAB 3: STATS ===== -->
+<div id="tab3" class="tab-content">
+    <div class="card">
+        <h3 style="margin-bottom:10px;">Your Progress</h3>
+        <div class="stat-grid">
+            <div class="stat-card"><div class="stat-number" id="totalMemorized">0</div><div class="stat-label">Total Memorized</div></div>
+            <div class="stat-card"><div class="stat-number" id="streakCount">0</div><div class="stat-label">🔥 Current Streak</div></div>
+            <div class="stat-card"><div class="stat-number" id="todayStatus">⚪</div><div class="stat-label">Today's Practice</div></div>
+        </div>
+        <div style="margin-top:14px;">
+            <label>📅 Practice History (Last 14 days)</label>
+            <div id="historyList" class="history-list" style="margin-top:6px;">No history yet.</div>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:14px; text-align:center;">💡 Mark a verse as memorized each day to keep your streak alive!</p>
+    </div>
+
+    <!-- ===== NEW: REMINDER SECTION ===== -->
+    <div class="card" id="reminderCard">
+        <h3 style="margin-bottom:10px;">⏰ Daily Reminder</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:12px;">
+            Set a time to receive a browser notification reminding you to memorize.
+            <br><strong style="color:var(--gold);">⚠️ Works only while this browser tab is open.</strong>
+        </p>
+        <div class="reminder-row">
+            <input type="time" id="reminderTimeInput" value="08:00">
+            <button class="btn-primary" id="setReminderBtn" style="padding:12px;">Set Reminder</button>
+            <button class="btn-danger" id="clearReminderBtn" style="padding:12px;">Clear</button>
+        </div>
+        <div id="reminderStatus" class="reminder-status inactive">
+            No reminder set.
+        </div>
+        <div id="reminderPermissionStatus" style="margin-top:8px; font-size:0.85rem; color:var(--text-muted);">
+            🔔 Notification permission: <span id="permStatusText">Checking...</span>
+        </div>
+    </div>
+
+    <!-- Backup & Export -->
+    <div class="card">
+        <h3 style="margin-bottom:10px;">💾 Backup & Restore</h3>
+        <div class="btn-row">
+            <button class="btn-outline" id="exportBtn" style="flex:1;">📤 Export Data</button>
+            <label class="btn-outline" style="flex:1; text-align:center; cursor:pointer; border:2px dashed var(--gold);">
+                📥 Import Data
+                <input type="file" id="importInput" accept=".json" style="display:none;">
+            </label>
+        </div>
+        <div id="backupFeedback" style="margin-top:10px; font-size:0.9rem; color:var(--text-muted);"></div>
+    </div>
+</div>
+
+<!-- ===== MODAL: VERSE ===== -->
+<div class="modal-overlay" id="verseModal">
+    <div class="modal-box">
+        <div class="modal-ref" id="modalRef">Romans 10:17</div>
+        <div class="modal-text" id="modalText">So then faith comes by hearing...</div>
+        <div class="modal-actions">
+            <button class="btn-secondary" id="closeModalBtn">Close</button>
+            <button class="btn-outline" id="shareModalBtn">📤 Share</button>
+            <button class="btn-danger" id="unmarkModalBtn">🗑️ Unmark</button>
+            <button class="btn-outline" id="readChapterFromModalBtn">📖 Chapter</button>
+            <button class="btn-primary" id="memorizeBtn">✅ Mark as Memorized</button>
+        </div>
+        <p id="modalFeedback" style="text-align:center; margin-top:12px; font-weight:600; color:var(--gold);"></p>
+    </div>
+</div>
+
+<!-- ===== MODAL: FULL CHAPTER ===== -->
+<div class="modal-overlay" id="chapterModal">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-ref" id="chapterModalTitle">Romans 10</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px; text-align:center;">
+            <span style="background:var(--gold-light); padding:2px 10px; border-radius:12px;">🟡 Gold = your selected verse</span>
+            <span style="background:var(--blue-highlight); padding:2px 10px; border-radius:12px; margin-left:8px;">🔵 Blue = other verses with your keyword</span>
+        </div>
+        <div id="chapterModalBody" style="max-height: 55vh; overflow-y: auto; margin: 12px 0 16px 0; border-top: 1px solid var(--border-card); padding-top: 12px;"></div>
+        <button class="btn-secondary" id="closeChapterBtn" style="width:100%;">Close Chapter</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. BOOK MAP & DATA STORE
+    // ==========================================
+    const BOOK_NAMES = {
+        1: "Genesis", 2: "Exodus", 3: "Leviticus", 4: "Numbers", 5: "Deuteronomy",
+        6: "Joshua", 7: "Judges", 8: "Ruth", 9: "1 Samuel", 10: "2 Samuel",
+        11: "1 Kings", 12: "2 Kings", 13: "1 Chronicles", 14: "2 Chronicles",
+        15: "Ezra", 16: "Nehemiah", 17: "Esther", 18: "Job", 19: "Psalms",
+        20: "Proverbs", 21: "Ecclesiastes", 22: "Song of Solomon", 23: "Isaiah",
+        24: "Jeremiah", 25: "Lamentations", 26: "Ezekiel", 27: "Daniel",
+        28: "Hosea", 29: "Joel", 30: "Amos", 31: "Obadiah", 32: "Jonah",
+        33: "Micah", 34: "Nahum", 35: "Habakkuk", 36: "Zephaniah", 37: "Haggai",
+        38: "Zechariah", 39: "Malachi",
+        40: "Matthew", 41: "Mark", 42: "Luke", 43: "John", 44: "Acts",
+        45: "Romans", 46: "1 Corinthians", 47: "2 Corinthians", 48: "Galatians",
+        49: "Ephesians", 50: "Philippians", 51: "Colossians", 52: "1 Thessalonians",
+        53: "2 Thessalonians", 54: "1 Timothy", 55: "2 Timothy", 56: "Titus",
+        57: "Philemon", 58: "Hebrews", 59: "James", 60: "1 Peter", 61: "2 Peter",
+        62: "1 John", 63: "2 John", 64: "3 John", 65: "Jude", 66: "Revelation"
+    };
+
+    let allVerses = [];
+    let memorized = [];
+    let streak = 0;
+    let lastMemorizedDate = '';
+    let currentSearchKeyword = '';
+
+    // ==========================================
+    // 2. LOCAL STORAGE
+    // ==========================================
+    function loadLocal() {
+        try {
+            const m = localStorage.getItem('bibleMemorizedAdv');
+            if (m) memorized = JSON.parse(m);
+            const s = localStorage.getItem('bibleStreak');
+            if (s) streak = parseInt(s) || 0;
+            const d = localStorage.getItem('bibleLastDate');
+            if (d) lastMemorizedDate = d;
+            const dark = localStorage.getItem('bibleDarkMode');
+            if (dark === 'true') document.body.classList.add('dark-mode');
+        } catch(e){}
+    }
+    function saveLocal() {
+        localStorage.setItem('bibleMemorizedAdv', JSON.stringify(memorized));
+        localStorage.setItem('bibleStreak', streak.toString());
+        localStorage.setItem('bibleLastDate', lastMemorizedDate);
+    }
+    loadLocal();
+
+    // ==========================================
+    // 3. XML PARSER
+    // ==========================================
+    function parseXML(fileText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(fileText, "text/xml");
+        const error = xmlDoc.querySelector('parsererror');
+        if (error) { alert('Invalid XML.'); return false; }
+
+        const testaments = xmlDoc.querySelectorAll('testament');
+        let verses = [];
+        testaments.forEach(testEl => {
+            const tName = testEl.getAttribute('name');
+            const books = testEl.querySelectorAll('book');
+            books.forEach(bookEl => {
+                const num = parseInt(bookEl.getAttribute('number'));
+                if (isNaN(num)) return;
+                const name = BOOK_NAMES[num] || `Book ${num}`;
+                const chapters = bookEl.querySelectorAll('chapter');
+                chapters.forEach(chapEl => {
+                    const cNum = parseInt(chapEl.getAttribute('number'));
+                    const verseEls = chapEl.querySelectorAll('verse');
+                    verseEls.forEach(vEl => {
+                        const vNum = parseInt(vEl.getAttribute('number'));
+                        const text = vEl.textContent.trim();
+                        if (text) {
+                            verses.push({ bookNum: num, bookName: name, chapter: cNum, verse: vNum, text: text, testament: tName });
+                        }
+                    });
+                });
+            });
+        });
+        if (verses.length === 0) { alert('No verses found.'); return false; }
+        allVerses = verses;
+        return true;
+    }
+
+    // ==========================================
+    // 4. HELPERS
+    // ==========================================
+    function getFilteredBookNumbers(testament) {
+        let nums = [...new Set(allVerses.map(v => v.bookNum))].sort((a,b)=>a-b);
+        if (testament === 'Old') nums = nums.filter(n => n < 40);
+        else if (testament === 'New') nums = nums.filter(n => n >= 40);
+        return nums;
+    }
+
+    function populateBookSelect(testament = 'New') {
+        const nums = getFilteredBookNumbers(testament);
+        const sel = document.getElementById('bookSelectMem');
+        sel.innerHTML = '<option value="">-- Select Book --</option>';
+        nums.forEach(num => {
+            const name = BOOK_NAMES[num] || `Book ${num}`;
+            sel.innerHTML += `<option value="${num}">${name}</option>`;
+        });
+    }
+
+    function isMemorizedToday(bookNum, chapter, verse) {
+        const today = new Date().toISOString().split('T')[0];
+        return memorized.some(m => m.bookNum === bookNum && m.chapter === chapter && m.verse === verse && m.date === today);
+    }
+
+    function isMemorizedAny(bookNum, chapter, verse) {
+        return memorized.some(m => m.bookNum === bookNum && m.chapter === chapter && m.verse === verse);
+    }
+
+    function findVerse(bookNum, chapter, verse) {
+        return allVerses.find(v => v.bookNum === bookNum && v.chapter === chapter && v.verse === verse);
+    }
+
+    function getVerseRef(bookNum, chapter, verse) {
+        const name = BOOK_NAMES[bookNum] || `Book ${bookNum}`;
+        return `${name} ${chapter}:${verse}`;
+    }
+
+    function getFullVerseText(bookNum, chapter, verse) {
+        const v = findVerse(bookNum, chapter, verse);
+        return v ? v.text : '';
+    }
+
+    // ==========================================
+    // 5. STREAK LOGIC
+    // ==========================================
+    function updateStreak() {
+        const today = new Date().toISOString().split('T')[0];
+        if (lastMemorizedDate === today) { /* do nothing */ }
+        else if (lastMemorizedDate === '') { streak = 0; }
+        else {
+            const last = new Date(lastMemorizedDate);
+            const now = new Date(today);
+            const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+            if (diffDays === 1) streak += 1;
+            else if (diffDays > 1) streak = 0;
+        }
+        saveLocal();
+        updateStatsUI();
+    }
+
+    function markMemorized(bookNum, chapter, verse) {
+        const today = new Date().toISOString().split('T')[0];
+        if (isMemorizedToday(bookNum, chapter, verse)) return false;
+        memorized.push({ bookNum, chapter, verse, date: today });
+
+        if (lastMemorizedDate === today) { /* do nothing */ }
+        else if (lastMemorizedDate === '') { streak = 1; }
+        else {
+            const last = new Date(lastMemorizedDate);
+            const now = new Date(today);
+            const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+            if (diffDays === 1) streak += 1;
+            else if (diffDays > 1) streak = 1;
+        }
+        lastMemorizedDate = today;
+        saveLocal();
+        updateStatsUI();
+        return true;
+    }
+
+    function unmarkVerse(bookNum, chapter, verse) {
+        memorized = memorized.filter(m => !(m.bookNum === bookNum && m.chapter === chapter && m.verse === verse));
+        saveLocal();
+        updateStatsUI();
+        renderDailyVerse();
+        searchVerses();
+    }
+
+    // ==========================================
+    // 6. DAILY VERSE
+    // ==========================================
+    function getDailyVerse() {
+        if (allVerses.length === 0) return null;
+        const today = new Date();
+        const seed = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate();
+        let s = seed;
+        const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+        const index = Math.floor(rand() * allVerses.length);
+        return allVerses[index];
+    }
+
+    function renderDailyVerse() {
+        const container = document.getElementById('dailyVerseContainer');
+        if (allVerses.length === 0) {
+            container.innerHTML = `<div class="daily-verse-card"><p style="color:var(--text-muted);">Upload your Bible to see the Verse of the Day.</p></div>`;
+            return;
+        }
+        const verse = getDailyVerse();
+        if (!verse) { container.innerHTML = ''; return; }
+        const memToday = isMemorizedToday(verse.bookNum, verse.chapter, verse.verse);
+        const memAny = isMemorizedAny(verse.bookNum, verse.chapter, verse.verse);
+        const status = memToday ? '✅ Memorized today!' : (memAny ? '✔️ Memorized previously' : '📖 New for today');
+
+        container.innerHTML = `
+            <div class="daily-verse-card">
+                <div class="label">🌟 Verse of the Day</div>
+                <div class="ref">${verse.bookName} ${verse.chapter}:${verse.verse}</div>
+                <div class="text">${verse.text}</div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">${status}</div>
+                <div class="actions">
+                    <button class="btn-outline" id="dailyShareBtn">📤 Share</button>
+                    <button class="btn-outline" id="dailyReadChapterBtn">📖 Chapter</button>
+                    ${!memToday ? `<button class="btn-primary" id="dailyMemorizeBtn" style="padding:10px; font-size:0.9rem;">✅ Memorize This</button>` : `<button class="btn-secondary" disabled style="padding:10px;">Already Done Today</button>`}
+                </div>
+            </div>
+        `;
+
+        document.getElementById('dailyMemorizeBtn')?.addEventListener('click', function() {
+            const v = getDailyVerse();
+            if (v) openVerseModal(v.bookNum, v.chapter, v.verse, v.bookName, v.text, true);
+        });
+        document.getElementById('dailyReadChapterBtn')?.addEventListener('click', function() {
+            const v = getDailyVerse();
+            if (v) openChapterModal(v.bookNum, v.chapter, v.verse, null);
+        });
+        document.getElementById('dailyShareBtn')?.addEventListener('click', function() {
+            const v = getDailyVerse();
+            if (v) shareVerse(v.text, `${v.bookName} ${v.chapter}:${v.verse}`);
+        });
+    }
+
+    // ==========================================
+    // 7. SEARCH
+    // ==========================================
+    function searchVerses() {
+        const bookNum = parseInt(document.getElementById('bookSelectMem').value);
+        const keyword = document.getElementById('searchKeyword').value.trim();
+        const container = document.getElementById('memVerseList');
+
+        if (!bookNum) { container.innerHTML = '<p style="color:var(--text-muted); padding:10px;">Please select a book.</p>'; return; }
+        if (!keyword) { container.innerHTML = '<p style="color:var(--text-muted); padding:10px;">Please type a keyword to search.</p>'; return; }
+
+        currentSearchKeyword = keyword;
+        const results = allVerses.filter(v => v.bookNum === bookNum && v.text.toLowerCase().includes(keyword.toLowerCase()));
+
+        if (!results.length) {
+            container.innerHTML = `<p style="color:var(--text-muted); padding:10px;">❌ No verses found containing "<strong>${keyword}</strong>" in this book.</p>`;
+            return;
+        }
+
+        let html = `<p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:10px;">🔍 Found ${results.length} verse(s) containing "<strong>${keyword}</strong>":</p>`;
+        results.forEach(v => {
+            const mem = isMemorizedAny(v.bookNum, v.chapter, v.verse);
+            const text = v.text;
+            const lowerText = text.toLowerCase();
+            const lowerKeyword = keyword.toLowerCase();
+            let preview = text;
+            if (lowerText.includes(lowerKeyword)) {
+                const index = lowerText.indexOf(lowerKeyword);
+                const start = Math.max(0, index - 30);
+                const end = Math.min(text.length, index + keyword.length + 30);
+                let snippet = text.substring(start, end);
+                if (start > 0) snippet = '...' + snippet;
+                if (end < text.length) snippet = snippet + '...';
+                const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                snippet = snippet.replace(regex, '<span class="keyword-highlight">$1</span>');
+                preview = snippet;
+            }
+
+            html += `<div class="verse-item" data-book="${v.bookNum}" data-chapter="${v.chapter}" data-verse="${v.verse}" data-text="${encodeURIComponent(v.text)}">
+                <span class="verse-ref">${v.bookName} ${v.chapter}:${v.verse}</span>
+                <span class="verse-text-preview">${preview}</span>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                    <span class="verse-tag" onclick="event.stopPropagation(); openChapterModal(${v.bookNum}, ${v.chapter}, ${v.verse}, '${keyword}')">📖 Chapter</span>
+                    ${mem ? `<span class="badge-memorized">✔️</span>` : `<span class="verse-tag" style="background:var(--border-card);">Tap to memorize</span>`}
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+
+        container.querySelectorAll('.verse-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const book = parseInt(this.dataset.book);
+                const chap = parseInt(this.dataset.chapter);
+                const verse = parseInt(this.dataset.verse);
+                const text = decodeURIComponent(this.dataset.text);
+                const name = BOOK_NAMES[book] || `Book ${book}`;
+                openVerseModal(book, chap, verse, name, text, false);
+            });
+        });
+    }
+
+    // ==========================================
+    // 8. MODAL: VERSE
+    // ==========================================
+    let currentModalVerse = null;
+    let currentModalIsDaily = false;
+
+    function openVerseModal(bookNum, chapter, verse, bookName, text, isDaily) {
+        currentModalVerse = { bookNum, chapter, verse };
+        currentModalIsDaily = isDaily;
+        document.getElementById('modalRef').textContent = `${bookName} ${chapter}:${verse}`;
+        document.getElementById('modalText').textContent = text;
+        document.getElementById('modalFeedback').textContent = '';
+        document.getElementById('verseModal').classList.add('open');
+    }
+
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        document.getElementById('verseModal').classList.remove('open');
+    });
+    document.getElementById('verseModal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+    });
+
+    document.getElementById('memorizeBtn').addEventListener('click', function() {
+        if (!currentModalVerse) return;
+        const { bookNum, chapter, verse } = currentModalVerse;
+        if (isMemorizedToday(bookNum, chapter, verse)) {
+            document.getElementById('modalFeedback').textContent = '✅ Already marked as memorized today!';
+            return;
+        }
+        const success = markMemorized(bookNum, chapter, verse);
+        if (success) {
+            document.getElementById('modalFeedback').textContent = '🎉 Marked as Memorized! Streak updated!';
+            searchVerses();
+            renderDailyVerse();
+            updateStatsUI();
+            setTimeout(() => { document.getElementById('verseModal').classList.remove('open'); }, 1200);
+        } else {
+            document.getElementById('modalFeedback').textContent = '⚠️ Already memorized today.';
+        }
+    });
+
+    document.getElementById('unmarkModalBtn').addEventListener('click', function() {
+        if (!currentModalVerse) return;
+        const { bookNum, chapter, verse } = currentModalVerse;
+        if (!isMemorizedAny(bookNum, chapter, verse)) {
+            document.getElementById('modalFeedback').textContent = '⚠️ This verse is not memorized.';
+            return;
+        }
+        if (confirm(`Remove "${getVerseRef(bookNum, chapter, verse)}" from your memorized list?`)) {
+            unmarkVerse(bookNum, chapter, verse);
+            document.getElementById('modalFeedback').textContent = '🗑️ Removed from memorized list.';
+            searchVerses();
+            renderDailyVerse();
+            updateStatsUI();
+            setTimeout(() => { document.getElementById('verseModal').classList.remove('open'); }, 1000);
+        }
+    });
+
+    document.getElementById('shareModalBtn').addEventListener('click', function() {
+        if (!currentModalVerse) return;
+        const { bookNum, chapter, verse } = currentModalVerse;
+        const ref = getVerseRef(bookNum, chapter, verse);
+        const text = getFullVerseText(bookNum, chapter, verse);
+        shareVerse(text, ref);
+    });
+
+    document.getElementById('readChapterFromModalBtn').addEventListener('click', function() {
+        if (!currentModalVerse) return;
+        const { bookNum, chapter, verse } = currentModalVerse;
+        openChapterModal(bookNum, chapter, verse, currentSearchKeyword);
+    });
+
+    // ==========================================
+    // 9. SHARE VERSE
+    // ==========================================
+    function shareVerse(text, ref) {
+        const fullText = `"${text}" — ${ref}`;
+        if (navigator.share) {
+            navigator.share({ title: ref, text: fullText }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(fullText).then(() => {
+                alert('📋 Verse copied to clipboard!');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = fullText;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                alert('📋 Verse copied to clipboard!');
+            });
+        }
+    }
+
+    // ==========================================
+    // 10. MODAL: FULL CHAPTER
+    // ==========================================
+    function openChapterModal(bookNum, chapter, highlightVerse, keyword = null) {
+        const verses = allVerses.filter(v => v.bookNum === bookNum && v.chapter === chapter);
+        if (!verses.length) { alert('No verses found for this chapter.'); return; }
+        const bookName = BOOK_NAMES[bookNum] || `Book ${bookNum}`;
+        document.getElementById('chapterModalTitle').textContent = `${bookName} ${chapter}`;
+
+        let html = '';
+        verses.forEach(v => {
+            const isGold = v.verse === highlightVerse;
+            let isBlue = false;
+            if (keyword && !isGold) {
+                isBlue = v.text.toLowerCase().includes(keyword.toLowerCase());
+            }
+            let cls = 'chapter-verse-item';
+            if (isGold) cls += ' highlight-gold';
+            else if (isBlue) cls += ' highlight-blue';
+
+            html += `<div class="${cls}"><span class="vref">${v.verse}</span> ${v.text}</div>`;
+        });
+        document.getElementById('chapterModalBody').innerHTML = html;
+        document.getElementById('chapterModal').classList.add('open');
+    }
+
+    document.getElementById('closeChapterBtn').addEventListener('click', () => {
+        document.getElementById('chapterModal').classList.remove('open');
+    });
+    document.getElementById('chapterModal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+    });
+
+    // ==========================================
+    // 11. QUIZ MODE
+    // ==========================================
+    let quizCurrentVerse = null;
+    let quizRevealed = false;
+
+    function startQuiz() {
+        const area = document.getElementById('quizArea');
+        const memorizedList = memorized.filter(m => findVerse(m.bookNum, m.chapter, m.verse));
+        if (memorizedList.length === 0) {
+            area.innerHTML = `<div style="color:var(--text-muted); padding:20px;">📭 You haven't memorized any verses yet. Start memorizing first!</div>`;
+            return;
+        }
+
+        const rand = memorizedList[Math.floor(Math.random() * memorizedList.length)];
+        quizCurrentVerse = rand;
+        quizRevealed = false;
+        const ref = getVerseRef(rand.bookNum, rand.chapter, rand.verse);
+
+        area.innerHTML = `
+            <div class="quiz-ref">${ref}</div>
+            <div class="quiz-text-hidden" id="quizTextArea">🔒 Tap "Reveal Verse" to see the text.</div>
+            <div class="btn-row" style="margin-top:16px;">
+                <button class="btn-outline" id="quizRevealBtn" style="flex:1;">👁️ Reveal Verse</button>
+                <button class="btn-secondary" id="quizNextBtn" style="flex:1;">⏭️ Next Verse</button>
+            </div>
+            <div class="btn-row" style="margin-top:10px;">
+                <button class="btn-primary" id="quizCorrectBtn" style="flex:1; background:#2e7d32;">✅ Recalled Correctly</button>
+                <button class="btn-secondary" id="quizReviewBtn" style="flex:1;">🔄 Needs Review</button>
+            </div>
+            <div id="quizFeedback" style="margin-top:12px; font-weight:600; color:var(--gold);"></div>
+        `;
+
+        document.getElementById('quizRevealBtn').addEventListener('click', function() {
+            if (quizRevealed) return;
+            const text = getFullVerseText(quizCurrentVerse.bookNum, quizCurrentVerse.chapter, quizCurrentVerse.verse);
+            document.getElementById('quizTextArea').className = 'quiz-text-revealed';
+            document.getElementById('quizTextArea').textContent = text;
+            quizRevealed = true;
+            document.getElementById('quizFeedback').textContent = '📖 Read it. Did you recall it correctly?';
+        });
+
+        document.getElementById('quizNextBtn').addEventListener('click', startQuiz);
+
+        document.getElementById('quizCorrectBtn').addEventListener('click', function() {
+            if (!quizCurrentVerse) return;
+            const { bookNum, chapter, verse } = quizCurrentVerse;
+            if (!isMemorizedToday(bookNum, chapter, verse)) {
+                markMemorized(bookNum, chapter, verse);
+            }
+            document.getElementById('quizFeedback').textContent = '🎉 Great! Keep it up!';
+            setTimeout(startQuiz, 1200);
+        });
+
+        document.getElementById('quizReviewBtn').addEventListener('click', function() {
+            document.getElementById('quizFeedback').textContent = '🔄 Review again later.';
+            setTimeout(startQuiz, 1000);
+        });
+    }
+
+    // ==========================================
+    // 12. STATS UI
+    // ==========================================
+    function updateStatsUI() {
+        const total = memorized.length;
+        document.getElementById('totalMemorized').textContent = total;
+        document.getElementById('streakCount').textContent = streak;
+
+        const today = new Date().toISOString().split('T')[0];
+        const practicedToday = memorized.some(m => m.date === today);
+        document.getElementById('todayStatus').textContent = practicedToday ? '✅' : '⚪';
+        document.getElementById('todayStatus').style.color = practicedToday ? '#2e7d32' : 'var(--text-muted)';
+
+        const history = [];
+        for (let i = 0; i < 14; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const ds = d.toISOString().split('T')[0];
+            const hasEntry = memorized.some(m => m.date === ds);
+            history.push({ date: ds, practiced: hasEntry });
+        }
+        const container = document.getElementById('historyList');
+        let hhtml = '';
+        history.forEach(h => {
+            const display = h.date.substring(5);
+            hhtml += `<span class="day ${h.practiced ? '' : 'missed'}">${h.practiced ? '🔥' : '⚪'} ${display}</span>`;
+        });
+        container.innerHTML = hhtml || 'No history yet.';
+    }
+
+    // ==========================================
+    // 13. BACKUP & EXPORT
+    // ==========================================
+    function exportData() {
+        const data = {
+            memorized: memorized,
+            streak: streak,
+            lastMemorizedDate: lastMemorizedDate,
+            exportedAt: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bible_memorizer_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        document.getElementById('backupFeedback').textContent = '✅ Data exported successfully!';
+    }
+
+    function importData(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data.memorized || !Array.isArray(data.memorized)) {
+                    throw new Error('Invalid data format.');
+                }
+                memorized = data.memorized;
+                streak = data.streak || 0;
+                lastMemorizedDate = data.lastMemorizedDate || '';
+                saveLocal();
+                updateStatsUI();
+                renderDailyVerse();
+                searchVerses();
+                document.getElementById('backupFeedback').textContent = '✅ Data imported successfully! ' + memorized.length + ' verses restored.';
+            } catch(err) {
+                document.getElementById('backupFeedback').textContent = '❌ Invalid file. Please check the format.';
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+    document.getElementById('importInput').addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            importData(this.files[0]);
+        }
+        this.value = '';
+    });
+
+    // ==========================================
+    // 14. DARK MODE
+    // ==========================================
+    document.getElementById('darkModeToggle').addEventListener('click', function() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('bibleDarkMode', isDark ? 'true' : 'false');
+        this.textContent = isDark ? '☀️' : '🌙';
+    });
+    if (document.body.classList.contains('dark-mode')) {
+        document.getElementById('darkModeToggle').textContent = '☀️';
+    }
+
+    // ==========================================
+    // 15. REMINDER TIMER (NEW)
+    // ==========================================
+    let reminderInterval = null;
+    let reminderTriggeredToday = false;
+
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            document.getElementById('permStatusText').textContent = '❌ Not supported on this browser.';
+            return false;
+        }
+        if (Notification.permission === 'granted') {
+            document.getElementById('permStatusText').textContent = '✅ Granted!';
+            return true;
+        } else if (Notification.permission === 'denied') {
+            document.getElementById('permStatusText').textContent = '❌ Denied. Please enable in browser settings.';
+            return false;
+        } else {
+            // Ask for permission
+            Notification.requestPermission().then(perm => {
+                if (perm === 'granted') {
+                    document.getElementById('permStatusText').textContent = '✅ Granted!';
+                    updateReminderStatus();
+                } else {
+                    document.getElementById('permStatusText').textContent = '❌ Denied.';
+                }
+            });
+            return false;
+        }
+    }
+
+    function loadReminderSettings() {
+        try {
+            const time = localStorage.getItem('bibleReminderTime');
+            const lastDate = localStorage.getItem('bibleReminderLastDate');
+            if (time) {
+                document.getElementById('reminderTimeInput').value = time;
+            }
+            if (lastDate) {
+                const today = new Date().toISOString().split('T')[0];
+                if (lastDate === today) {
+                    reminderTriggeredToday = true;
+                } else {
+                    reminderTriggeredToday = false;
+                    localStorage.removeItem('bibleReminderLastDate');
+                }
+            }
+        } catch(e) {}
+    }
+
+    function saveReminderTime(time) {
+        localStorage.setItem('bibleReminderTime', time);
+        reminderTriggeredToday = false;
+        localStorage.removeItem('bibleReminderLastDate');
+        updateReminderStatus();
+    }
+
+    function clearReminder() {
+        localStorage.removeItem('bibleReminderTime');
+        localStorage.removeItem('bibleReminderLastDate');
+        reminderTriggeredToday = false;
+        updateReminderStatus();
+    }
+
+    function updateReminderStatus() {
+        const statusDiv = document.getElementById('reminderStatus');
+        const time = localStorage.getItem('bibleReminderTime');
+        const perm = Notification.permission;
+
+        if (!time) {
+            statusDiv.className = 'reminder-status inactive';
+            statusDiv.innerHTML = '⏰ No reminder set.';
+            return;
+        }
+
+        if (perm !== 'granted') {
+            statusDiv.className = 'reminder-status inactive';
+            statusDiv.innerHTML = `⚠️ Reminder set for <strong>${time}</strong>, but notification permission is <strong>${perm}</strong>. Please allow notifications.`;
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = localStorage.getItem('bibleReminderLastDate');
+        let statusText = `⏰ Next reminder at <strong>${time}</strong>.`;
+        let className = 'pending';
+
+        if (lastDate === today) {
+            statusText = `✅ Reminder triggered today at ${time}. It will fire again tomorrow.`;
+            className = 'active';
+        } else if (reminderTriggeredToday) {
+            statusText = `✅ Reminder already fired today at ${time}. Next reminder tomorrow.`;
+            className = 'active';
+        } else {
+            // Check if we missed today's time
+            const now = new Date();
+            const [h, m] = time.split(':').map(Number);
+            const reminderTime = new Date();
+            reminderTime.setHours(h, m, 0, 0);
+            if (now > reminderTime) {
+                statusText = `⏰ Reminder set for <strong>${time}</strong> (missed today's time). Will fire again tomorrow at ${time}.`;
+            } else {
+                statusText = `⏰ Reminder set for <strong>${time}</strong> today. Waiting for the time to match...`;
+            }
+        }
+        statusDiv.className = `reminder-status ${className}`;
+        statusDiv.innerHTML = statusText;
+    }
+
+    function sendReminderNotification() {
+        if (!('Notification' in window) || Notification.permission !== 'granted') {
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = localStorage.getItem('bibleReminderLastDate');
+
+        if (lastDate === today) {
+            return; // Already sent today
+        }
+
+        const notification = new Notification('📖 Daily Bible Reminder', {
+            body: '⏰ Time to memorize your Bible verse! Open your Memorizer app now.',
+            icon: '📖',
+            tag: 'bible-reminder',
+            requireInteraction: true,
+        });
+
+        notification.onclick = function() {
+            window.focus();
+            this.close();
+            // Switch to the Memorize tab
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-tab="tab2"]').classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab2').classList.add('active');
+        };
+
+        localStorage.setItem('bibleReminderLastDate', today);
+        reminderTriggeredToday = true;
+        updateReminderStatus();
+        console.log('✅ Reminder notification sent at', new Date().toLocaleTimeString());
+    }
+
+    function startReminderChecker() {
+        if (reminderInterval) {
+            clearInterval(reminderInterval);
+        }
+
+        // Check every 30 seconds
+        reminderInterval = setInterval(() => {
+            const time = localStorage.getItem('bibleReminderTime');
+            if (!time) return;
+
+            const perm = Notification.permission;
+            if (perm !== 'granted') return;
+
+            const today = new Date().toISOString().split('T')[0];
+            const lastDate = localStorage.getItem('bibleReminderLastDate');
+            if (lastDate === today) return;
+
+            const now = new Date();
+            const [h, m] = time.split(':').map(Number);
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+
+            // Check if current time matches the reminder time (within 1 minute grace)
+            if (currentHour === h && currentMinute === m) {
+                sendReminderNotification();
+            }
+        }, 30000); // 30 seconds
+
+        // Also check immediately on page load
+        setTimeout(() => {
+            const time = localStorage.getItem('bibleReminderTime');
+            if (time) {
+                const now = new Date();
+                const [h, m] = time.split(':').map(Number);
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                if (currentHour === h && currentMinute === m) {
+                    const today = new Date().toISOString().split('T')[0];
+                    const lastDate = localStorage.getItem('bibleReminderLastDate');
+                    if (lastDate !== today) {
+                        sendReminderNotification();
+                    }
+                }
+            }
+        }, 3000);
+    }
+
+    // Reminder UI Event Listeners
+    document.getElementById('setReminderBtn').addEventListener('click', function() {
+        const time = document.getElementById('reminderTimeInput').value;
+        if (!time) {
+            alert('Please select a time.');
+            return;
+        }
+        // Request permission if not granted
+        if (Notification.permission !== 'granted') {
+            Notification.requestPermission().then(perm => {
+                if (perm === 'granted') {
+                    document.getElementById('permStatusText').textContent = '✅ Granted!';
+                    saveReminderTime(time);
+                    updateReminderStatus();
+                    alert(`✅ Reminder set for ${time}. Keep this tab open for it to work!`);
+                } else {
+                    document.getElementById('permStatusText').textContent = '❌ Denied. Cannot set reminder without permission.';
+                    alert('⚠️ Notification permission denied. Please enable it in your browser settings.');
+                }
+            });
+        } else {
+            saveReminderTime(time);
+            updateReminderStatus();
+            alert(`✅ Reminder set for ${time}. Keep this tab open for it to work!`);
+        }
+    });
+
+    document.getElementById('clearReminderBtn').addEventListener('click', function() {
+        clearReminder();
+        updateReminderStatus();
+        alert('🗑️ Reminder cleared.');
+    });
+
+    // ==========================================
+    // 16. EVENT LISTENERS
+    // ==========================================
+
+    // File Upload
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const text = ev.target.result;
+            if (parseXML(text)) {
+                document.getElementById('uploadStatus').innerHTML = '✅ Loaded successfully! ' + allVerses.length + ' total verses found.';
+                document.getElementById('uploadHelp').classList.remove('hidden');
+                const defaultTest = 'New';
+                document.getElementById('testamentSelectMem').value = defaultTest;
+                populateBookSelect(defaultTest);
+                const firstBook = getFilteredBookNumbers(defaultTest)[0];
+                if (firstBook) {
+                    document.getElementById('bookSelectMem').value = firstBook;
+                }
+                renderDailyVerse();
+                updateStatsUI();
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('[data-tab="tab2"]').classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab2').classList.add('active');
+            } else {
+                document.getElementById('uploadStatus').innerHTML = '❌ Failed to parse. Check console.';
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Testament filter
+    document.getElementById('testamentSelectMem').addEventListener('change', function() {
+        const testament = this.value;
+        populateBookSelect(testament);
+        document.getElementById('bookSelectMem').value = '';
+        document.getElementById('memVerseList').innerHTML = '<p style="color:var(--text-muted); padding:10px;">Select a book, type a keyword, and click Search.</p>';
+    });
+
+    // Search
+    document.getElementById('searchBtn').addEventListener('click', searchVerses);
+    document.getElementById('searchKeyword').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchVerses();
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(this.dataset.tab).classList.add('active');
+            if (this.dataset.tab === 'tab3') {
+                updateStatsUI();
+                updateReminderStatus();
+                requestNotificationPermission();
+            }
+            if (this.dataset.tab === 'tab2') renderDailyVerse();
+            if (this.dataset.tab === 'tab4') startQuiz();
+        });
+    });
+
+    // ==========================================
+    // 17. INIT
+    // ==========================================
+    updateStreak();
+    renderDailyVerse();
+    updateStatsUI();
+    loadReminderSettings();
+    updateReminderStatus();
+    requestNotificationPermission();
+    startReminderChecker();
+
+    console.log('📖 Daily Bible Memorizer (100% Complete with Reminder) loaded. Upload your XML to start!');
+    console.log('⏰ Reminder timer is running. Keep this tab open!');
+</script>
+
+</body>
+</html>
