@@ -459,10 +459,16 @@
 <div id="tab1" class="tab-content active">
     <div class="card">
         <p style="margin-bottom:12px; font-weight:500;">1️⃣ Upload your NKJV XML file</p>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">💾 Upload once. It will be permanently saved in your browser's local database.</p>
         <input type="file" id="fileInput" accept=".xml">
         <div id="uploadStatus" style="margin-top:12px; font-size:0.9rem; color:var(--text-muted);"></div>
         <div id="uploadHelp" class="hidden" style="margin-top:16px; padding:12px; background:var(--border-card); border-radius:12px;">
-            ✅ File loaded! Go to the <strong>"Memorize"</strong> tab.
+            ✅ File loaded and saved to your browser's local database! Go to the <strong>"Memorize"</strong> tab.
+        </div>
+        <!-- Status indicator for saved Bible -->
+        <div id="bibleSavedStatus" style="margin-top:12px; padding:12px; border-radius:12px; background:var(--success-bg); border-left:4px solid #2e7d32; display:none;">
+            ✅ <strong>Bible already loaded from local storage.</strong> You don't need to upload again unless you want to change translations.
+            <br><span style="font-size:0.85rem; color:var(--text-muted);">(Upload a new file to replace it.)</span>
         </div>
     </div>
 </div>
@@ -519,7 +525,7 @@
         <p style="font-size:0.85rem; color:var(--text-muted); margin-top:14px; text-align:center;">💡 Mark a verse as memorized each day to keep your streak alive!</p>
     </div>
 
-    <!-- ===== NEW: REMINDER SECTION ===== -->
+    <!-- Reminder Section -->
     <div class="card" id="reminderCard">
         <h3 style="margin-bottom:10px;">⏰ Daily Reminder</h3>
         <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:12px;">
@@ -611,7 +617,7 @@
     let currentSearchKeyword = '';
 
     // ==========================================
-    // 2. LOCAL STORAGE
+    // 2. LOCAL STORAGE (Settings)
     // ==========================================
     function loadLocal() {
         try {
@@ -633,7 +639,66 @@
     loadLocal();
 
     // ==========================================
-    // 3. XML PARSER
+    // 3. INDEXED DB (Bible Storage)
+    // ==========================================
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('BibleMemorizerDB', 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('bibleData')) {
+                    db.createObjectStore('bibleData', { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    function saveBibleToDB(verses) {
+        return new Promise((resolve, reject) => {
+            openDB().then(db => {
+                const tx = db.transaction('bibleData', 'readwrite');
+                const store = tx.objectStore('bibleData');
+                const request = store.put({ id: 'mainBible', data: verses });
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
+            }).catch(reject);
+        });
+    }
+
+    function loadBibleFromDB() {
+        return new Promise((resolve, reject) => {
+            openDB().then(db => {
+                const tx = db.transaction('bibleData', 'readonly');
+                const store = tx.objectStore('bibleData');
+                const request = store.get('mainBible');
+                request.onsuccess = () => {
+                    if (request.result) {
+                        resolve(request.result.data);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                request.onerror = (e) => reject(e.target.error);
+            }).catch(reject);
+        });
+    }
+
+    function clearBibleFromDB() {
+        return new Promise((resolve, reject) => {
+            openDB().then(db => {
+                const tx = db.transaction('bibleData', 'readwrite');
+                const store = tx.objectStore('bibleData');
+                const request = store.delete('mainBible');
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
+            }).catch(reject);
+        });
+    }
+
+    // ==========================================
+    // 4. XML PARSER
     // ==========================================
     function parseXML(fileText) {
         const parser = new DOMParser();
@@ -665,12 +730,11 @@
             });
         });
         if (verses.length === 0) { alert('No verses found.'); return false; }
-        allVerses = verses;
-        return true;
+        return verses;
     }
 
     // ==========================================
-    // 4. HELPERS
+    // 5. HELPERS
     // ==========================================
     function getFilteredBookNumbers(testament) {
         let nums = [...new Set(allVerses.map(v => v.bookNum))].sort((a,b)=>a-b);
@@ -713,7 +777,7 @@
     }
 
     // ==========================================
-    // 5. STREAK LOGIC
+    // 6. STREAK LOGIC
     // ==========================================
     function updateStreak() {
         const today = new Date().toISOString().split('T')[0];
@@ -759,7 +823,7 @@
     }
 
     // ==========================================
-    // 6. DAILY VERSE
+    // 7. DAILY VERSE
     // ==========================================
     function getDailyVerse() {
         if (allVerses.length === 0) return null;
@@ -812,7 +876,7 @@
     }
 
     // ==========================================
-    // 7. SEARCH
+    // 8. SEARCH
     // ==========================================
     function searchVerses() {
         const bookNum = parseInt(document.getElementById('bookSelectMem').value);
@@ -873,7 +937,7 @@
     }
 
     // ==========================================
-    // 8. MODAL: VERSE
+    // 9. MODAL: VERSE
     // ==========================================
     let currentModalVerse = null;
     let currentModalIsDaily = false;
@@ -945,7 +1009,7 @@
     });
 
     // ==========================================
-    // 9. SHARE VERSE
+    // 10. SHARE VERSE
     // ==========================================
     function shareVerse(text, ref) {
         const fullText = `"${text}" — ${ref}`;
@@ -967,7 +1031,7 @@
     }
 
     // ==========================================
-    // 10. MODAL: FULL CHAPTER
+    // 11. MODAL: FULL CHAPTER
     // ==========================================
     function openChapterModal(bookNum, chapter, highlightVerse, keyword = null) {
         const verses = allVerses.filter(v => v.bookNum === bookNum && v.chapter === chapter);
@@ -1000,7 +1064,7 @@
     });
 
     // ==========================================
-    // 11. QUIZ MODE
+    // 12. QUIZ MODE
     // ==========================================
     let quizCurrentVerse = null;
     let quizRevealed = false;
@@ -1060,7 +1124,7 @@
     }
 
     // ==========================================
-    // 12. STATS UI
+    // 13. STATS UI
     // ==========================================
     function updateStatsUI() {
         const total = memorized.length;
@@ -1090,7 +1154,7 @@
     }
 
     // ==========================================
-    // 13. BACKUP & EXPORT
+    // 14. BACKUP & EXPORT
     // ==========================================
     function exportData() {
         const data = {
@@ -1143,7 +1207,7 @@
     });
 
     // ==========================================
-    // 14. DARK MODE
+    // 15. DARK MODE
     // ==========================================
     document.getElementById('darkModeToggle').addEventListener('click', function() {
         document.body.classList.toggle('dark-mode');
@@ -1156,7 +1220,7 @@
     }
 
     // ==========================================
-    // 15. REMINDER TIMER (NEW)
+    // 16. REMINDER TIMER
     // ==========================================
     let reminderInterval = null;
     let reminderTriggeredToday = false;
@@ -1173,7 +1237,6 @@
             document.getElementById('permStatusText').textContent = '❌ Denied. Please enable in browser settings.';
             return false;
         } else {
-            // Ask for permission
             Notification.requestPermission().then(perm => {
                 if (perm === 'granted') {
                     document.getElementById('permStatusText').textContent = '✅ Granted!';
@@ -1248,7 +1311,6 @@
             statusText = `✅ Reminder already fired today at ${time}. Next reminder tomorrow.`;
             className = 'active';
         } else {
-            // Check if we missed today's time
             const now = new Date();
             const [h, m] = time.split(':').map(Number);
             const reminderTime = new Date();
@@ -1272,7 +1334,7 @@
         const lastDate = localStorage.getItem('bibleReminderLastDate');
 
         if (lastDate === today) {
-            return; // Already sent today
+            return;
         }
 
         const notification = new Notification('📖 Daily Bible Reminder', {
@@ -1285,7 +1347,6 @@
         notification.onclick = function() {
             window.focus();
             this.close();
-            // Switch to the Memorize tab
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('[data-tab="tab2"]').classList.add('active');
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -1303,7 +1364,6 @@
             clearInterval(reminderInterval);
         }
 
-        // Check every 30 seconds
         reminderInterval = setInterval(() => {
             const time = localStorage.getItem('bibleReminderTime');
             if (!time) return;
@@ -1320,13 +1380,11 @@
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
 
-            // Check if current time matches the reminder time (within 1 minute grace)
             if (currentHour === h && currentMinute === m) {
                 sendReminderNotification();
             }
-        }, 30000); // 30 seconds
+        }, 30000);
 
-        // Also check immediately on page load
         setTimeout(() => {
             const time = localStorage.getItem('bibleReminderTime');
             if (time) {
@@ -1345,14 +1403,12 @@
         }, 3000);
     }
 
-    // Reminder UI Event Listeners
     document.getElementById('setReminderBtn').addEventListener('click', function() {
         const time = document.getElementById('reminderTimeInput').value;
         if (!time) {
             alert('Please select a time.');
             return;
         }
-        // Request permission if not granted
         if (Notification.permission !== 'granted') {
             Notification.requestPermission().then(perm => {
                 if (perm === 'granted') {
@@ -1379,7 +1435,7 @@
     });
 
     // ==========================================
-    // 16. EVENT LISTENERS
+    // 17. EVENT LISTENERS
     // ==========================================
 
     // File Upload
@@ -1387,11 +1443,21 @@
         const file = this.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(ev) {
+        reader.onload = async function(ev) {
             const text = ev.target.result;
-            if (parseXML(text)) {
-                document.getElementById('uploadStatus').innerHTML = '✅ Loaded successfully! ' + allVerses.length + ' total verses found.';
-                document.getElementById('uploadHelp').classList.remove('hidden');
+            const parsed = parseXML(text);
+            if (parsed) {
+                allVerses = parsed;
+                // Save to IndexedDB
+                try {
+                    await saveBibleToDB(allVerses);
+                    document.getElementById('uploadStatus').innerHTML = '✅ Loaded and SAVED to local database! ' + allVerses.length + ' total verses.';
+                    document.getElementById('uploadHelp').classList.remove('hidden');
+                    document.getElementById('bibleSavedStatus').style.display = 'none';
+                } catch (err) {
+                    document.getElementById('uploadStatus').innerHTML = '⚠️ Loaded but failed to save to database: ' + err.message;
+                }
+                // Update UI
                 const defaultTest = 'New';
                 document.getElementById('testamentSelectMem').value = defaultTest;
                 populateBookSelect(defaultTest);
@@ -1444,19 +1510,53 @@
     });
 
     // ==========================================
-    // 17. INIT
+    // 18. INIT (Load Bible from IndexedDB on start)
     // ==========================================
-    updateStreak();
-    renderDailyVerse();
-    updateStatsUI();
-    loadReminderSettings();
-    updateReminderStatus();
-    requestNotificationPermission();
-    startReminderChecker();
+    async function initializeApp() {
+        // Load settings
+        loadLocal();
+        loadReminderSettings();
 
-    console.log('📖 Daily Bible Memorizer (100% Complete with Reminder) loaded. Upload your XML to start!');
-    console.log('⏰ Reminder timer is running. Keep this tab open!');
+        // Try to load Bible from IndexedDB
+        try {
+            const savedBible = await loadBibleFromDB();
+            if (savedBible && savedBible.length > 0) {
+                allVerses = savedBible;
+                document.getElementById('bibleSavedStatus').style.display = 'block';
+                document.getElementById('uploadStatus').innerHTML = '✅ Loaded ' + allVerses.length + ' verses from local database.';
+                document.getElementById('uploadHelp').classList.remove('hidden');
+
+                // Populate UI
+                const defaultTest = 'New';
+                document.getElementById('testamentSelectMem').value = defaultTest;
+                populateBookSelect(defaultTest);
+                const firstBook = getFilteredBookNumbers(defaultTest)[0];
+                if (firstBook) {
+                    document.getElementById('bookSelectMem').value = firstBook;
+                }
+                renderDailyVerse();
+                updateStatsUI();
+                console.log('📖 Bible loaded from IndexedDB.');
+            } else {
+                console.log('📂 No Bible found in IndexedDB. Please upload your XML.');
+                document.getElementById('uploadStatus').innerHTML = '📂 No Bible found. Please upload your XML file.';
+            }
+        } catch (err) {
+            console.error('Failed to load Bible from IndexedDB:', err);
+            document.getElementById('uploadStatus').innerHTML = '⚠️ Failed to load local database. Please re-upload your XML.';
+        }
+
+        // Update streak and reminder status
+        updateStreak();
+        updateReminderStatus();
+        requestNotificationPermission();
+        startReminderChecker();
+
+        console.log('📖 Daily Bible Memorizer (Permanent Storage) loaded.');
+    }
+
+    // Run the init
+    initializeApp();
 </script>
-
 </body>
 </html>
